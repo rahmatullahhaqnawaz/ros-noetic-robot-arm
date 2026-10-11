@@ -1,0 +1,16 @@
+<launch>
+  <!-- RAN-01 demo: the arm plays a looping choreography by itself -->
+  <arg name="speed" default="1.0"/>
+
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find workspace_experiments)/urdf/robotarm.urdf.xacro"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <!-- replaces the slider GUI: publishes /joint_states automatically -->
+  <node name="demo_motion" pkg="workspace_experiments" type="demo_motion.py" output="screen">
+    <param name="speed" value="$(arg speed)"/>
+  </node>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(dirname)/../config/arm.rviz"/>
+</launch>
