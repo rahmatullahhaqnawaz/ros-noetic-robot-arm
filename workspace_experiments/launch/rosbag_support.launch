@@ -1,0 +1,16 @@
+<launch>
+  <!-- use the time from the rosbag (/clock) instead of the computer clock -->
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- load the robot model -->
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find workspace_experiments)/urdf/robotarm.urdf.xacro"/>
+
+  <!-- joint angles from the bag -> TF -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <!-- NO joint_state_publisher_gui: /joint_states comes from rosbag play -->
+
+  <!-- rviz with the same config -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(dirname)/../config/arm.rviz"/>
+</launch>

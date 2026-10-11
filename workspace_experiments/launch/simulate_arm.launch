@@ -1,0 +1,14 @@
+<launch>
+  <!-- load the robot model into the parameter server -->
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find workspace_experiments)/urdf/robotarm.urdf.xacro"/>
+
+  <!-- computes TF frames of all links from the joint angles -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <!-- slider window that publishes /joint_states -->
+  <node name="joint_state_publisher_gui" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui"/>
+
+  <!-- rviz with our saved config -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(dirname)/../config/arm.rviz"/>
+</launch>

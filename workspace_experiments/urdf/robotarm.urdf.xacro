@@ -1,0 +1,260 @@
+<?xml version="1.0"?>
+<!-- RAN-01: a 6-DOF industrial-style robot arm built only from simple shapes -->
+<robot name="ran_01" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:property name="PI" value="3.14159"/>
+  <xacro:property name="HALF_PI" value="1.5708"/>
+
+  <material name="ran_orange"><color rgba="1.0 0.42 0.0 1"/></material>
+  <material name="steel"><color rgba="0.72 0.72 0.74 1"/></material>
+  <material name="dark"><color rgba="0.22 0.22 0.24 1"/></material>
+  <material name="black"><color rgba="0.04 0.04 0.04 1"/></material>
+  <material name="white"><color rgba="1 1 1 1"/></material>
+
+  <!-- ================= helper macros ================= -->
+
+  <!-- revolute joint placed z metres above the parent frame -->
+  <xacro:macro name="rev_joint" params="name parent child z axis">
+    <joint name="${name}" type="revolute">
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <origin xyz="0 0 ${z}" rpy="0 0 0"/>
+      <axis xyz="${axis}"/>
+      <limit lower="${-PI}" upper="${PI}" effort="10" velocity="1.0"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- motor hub: steel cylinder lying along y, with black end caps -->
+  <xacro:macro name="joint_hub" params="radius width z">
+    <visual>
+      <origin xyz="0 0 ${z}" rpy="${HALF_PI} 0 0"/>
+      <geometry><cylinder radius="${radius}" length="${width}"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 ${z}" rpy="${HALF_PI} 0 0"/>
+      <geometry><cylinder radius="${radius*0.65}" length="${width+0.01}"/></geometry>
+      <material name="black"/>
+    </visual>
+  </xacro:macro>
+
+  <!-- ============ RAN-01 logo ============
+       The text runs along the upper arm and reads bottom-to-top.
+       Each letter is built from thin white boxes ("strokes").
+       Letter coordinates: u = along the text (-> +z of the arm),
+                           v = letter height (-> x of the arm),
+                           a = stroke angle in the letter (0 = horizontal, pi/2 = vertical).
+       side = 1 puts it on the +y face, side = -1 on the -y face (mirrored so it reads correctly). -->
+  <xacro:macro name="stroke" params="side zc u v slen a">
+    <visual>
+      <origin xyz="${side*v} ${side*0.077} ${zc+u}" rpy="0 ${side*a - HALF_PI} 0"/>
+      <geometry><box size="${slen} 0.006 0.016"/></geometry>
+      <material name="white"/>
+    </visual>
+  </xacro:macro>
+
+  <xacro:macro name="glyph_R" params="side zc">
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.023"  v="0"       slen="0.09"   a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.0025" v="0.038"   slen="0.055"  a="0"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.0025" v="0"       slen="0.055"  a="0"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0.019"   v="0.0225"  slen="0.045"  a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0.013"   v="-0.0225" slen="0.0564" a="-0.9239"/>
+  </xacro:macro>
+
+  <xacro:macro name="glyph_A" params="side zc">
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.015" v="0"      slen="0.0949" a="1.2490"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0.015"  v="0"      slen="0.0949" a="-1.2490"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0"      v="-0.012" slen="0.038"  a="0"/>
+  </xacro:macro>
+
+  <xacro:macro name="glyph_N" params="side zc">
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.023" v="0" slen="0.09"   a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0.023"  v="0" slen="0.09"   a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0"      v="0" slen="0.1011" a="-1.0984"/>
+  </xacro:macro>
+
+  <xacro:macro name="glyph_dash" params="side zc">
+    <xacro:stroke side="${side}" zc="${zc}" u="0" v="0" slen="0.03" a="0"/>
+  </xacro:macro>
+
+  <xacro:macro name="glyph_0" params="side zc">
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.023" v="0"      slen="0.09" a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0.023"  v="0"      slen="0.09" a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0"      v="0.038"  slen="0.06" a="0"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0"      v="-0.038" slen="0.06" a="0"/>
+  </xacro:macro>
+
+  <xacro:macro name="glyph_1" params="side zc">
+    <xacro:stroke side="${side}" zc="${zc}" u="0.004"  v="0"      slen="0.09"   a="${HALF_PI}"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="0.004"  v="-0.038" slen="0.04"   a="0"/>
+    <xacro:stroke side="${side}" zc="${zc}" u="-0.005" v="0.036"  slen="0.0255" a="0.7854"/>
+  </xacro:macro>
+
+  <!-- black panel + "RAN-01" on one side of the upper arm -->
+  <xacro:macro name="ran_logo" params="side">
+    <visual>
+      <origin xyz="0 ${side*0.072} 0.42" rpy="0 0 0"/>
+      <geometry><box size="0.13 0.004 0.5"/></geometry>
+      <material name="black"/>
+    </visual>
+    <xacro:glyph_R    side="${side}" zc="0.23"/>
+    <xacro:glyph_A    side="${side}" zc="0.315"/>
+    <xacro:glyph_N    side="${side}" zc="0.40"/>
+    <xacro:glyph_dash side="${side}" zc="0.47"/>
+    <xacro:glyph_0    side="${side}" zc="0.54"/>
+    <xacro:glyph_1    side="${side}" zc="0.615"/>
+  </xacro:macro>
+
+  <!-- ================= links ================= -->
+
+  <!-- base_link: floor plate, pedestal and cable box -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.02"/>
+      <geometry><cylinder radius="0.24" length="0.04"/></geometry>
+      <material name="dark"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.07"/>
+      <geometry><cylinder radius="0.18" length="0.06"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <visual>
+      <origin xyz="-0.22 0 0.06"/>
+      <geometry><box size="0.12 0.18 0.08"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.05"/>
+      <geometry><cylinder radius="0.24" length="0.1"/></geometry>
+    </collision>
+  </link>
+
+  <!-- link1: rotating carousel + shoulder housing + shoulder motor -->
+  <link name="link1">
+    <visual>
+      <origin xyz="0 0 0.04"/>
+      <geometry><cylinder radius="0.17" length="0.08"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.14"/>
+      <geometry><box size="0.24 0.22 0.12"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <xacro:joint_hub radius="0.1" width="0.36" z="0.2"/>
+    <collision>
+      <origin xyz="0 0 0.12"/>
+      <geometry><cylinder radius="0.17" length="0.24"/></geometry>
+    </collision>
+  </link>
+
+  <!-- link2: upper arm with the RAN logo on both sides + elbow motor -->
+  <link name="link2">
+    <visual>
+      <origin xyz="0 0 0.4"/>
+      <geometry><box size="0.16 0.14 0.7"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <xacro:joint_hub radius="0.085" width="0.26" z="0.8"/>
+    <xacro:ran_logo side="1"/>
+    <xacro:ran_logo side="-1"/>
+    <collision>
+      <origin xyz="0 0 0.4"/>
+      <geometry><box size="0.16 0.14 0.8"/></geometry>
+    </collision>
+  </link>
+
+  <!-- link3: forearm (elbow housing + tube + steel ring) -->
+  <link name="link3">
+    <visual>
+      <origin xyz="0 0 0.12"/>
+      <geometry><box size="0.17 0.17 0.24"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.52"/>
+      <geometry><cylinder radius="0.06" length="0.56"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.78"/>
+      <geometry><cylinder radius="0.066" length="0.04"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.4"/>
+      <geometry><cylinder radius="0.085" length="0.8"/></geometry>
+    </collision>
+  </link>
+
+  <!-- link4: wrist roll segment -->
+  <link name="link4">
+    <visual>
+      <origin xyz="0 0 0.05"/>
+      <geometry><cylinder radius="0.055" length="0.1"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.05"/>
+      <geometry><cylinder radius="0.055" length="0.1"/></geometry>
+    </collision>
+  </link>
+
+  <!-- link5: wrist pitch motor + short segment -->
+  <link name="link5">
+    <xacro:joint_hub radius="0.05" width="0.13" z="0"/>
+    <visual>
+      <origin xyz="0 0 0.05"/>
+      <geometry><cylinder radius="0.042" length="0.1"/></geometry>
+      <material name="ran_orange"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.05"/>
+      <geometry><cylinder radius="0.05" length="0.1"/></geometry>
+    </collision>
+  </link>
+
+  <!-- tool0: flange + tool body + simple two-finger gripper -->
+  <link name="tool0">
+    <visual>
+      <origin xyz="0 0 0.008"/>
+      <geometry><cylinder radius="0.05" length="0.016"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.051"/>
+      <geometry><cylinder radius="0.045" length="0.07"/></geometry>
+      <material name="black"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.096"/>
+      <geometry><box size="0.11 0.05 0.02"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <visual>
+      <origin xyz="0.04 0 0.141"/>
+      <geometry><box size="0.016 0.04 0.07"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <visual>
+      <origin xyz="-0.04 0 0.141"/>
+      <geometry><box size="0.016 0.04 0.07"/></geometry>
+      <material name="steel"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.088"/>
+      <geometry><cylinder radius="0.055" length="0.176"/></geometry>
+    </collision>
+  </link>
+
+  <!-- ================= joints ================= -->
+  <!-- base yaw, shoulder, elbow, wrist roll, wrist pitch, wrist roll -->
+  <xacro:rev_joint name="joint1" parent="base_link" child="link1" z="0.1" axis="0 0 1"/>
+  <xacro:rev_joint name="joint2" parent="link1"     child="link2" z="0.2" axis="0 1 0"/>
+  <xacro:rev_joint name="joint3" parent="link2"     child="link3" z="0.8" axis="0 1 0"/>
+  <xacro:rev_joint name="joint4" parent="link3"     child="link4" z="0.8" axis="0 0 1"/>
+  <xacro:rev_joint name="joint5" parent="link4"     child="link5" z="0.1" axis="0 1 0"/>
+  <xacro:rev_joint name="joint6" parent="link5"     child="tool0" z="0.1" axis="0 0 1"/>
+
+</robot>
