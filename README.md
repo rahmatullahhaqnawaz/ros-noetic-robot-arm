@@ -94,6 +94,17 @@ Move the sliders and the arm follows in RViz. To see where the tool is, open a s
 rosrun tf tf_echo base_link tool0
 ```
 
+## Demo mode
+
+Watch RAN-01 move by itself through a looping choreography (no sliders needed):
+
+```bash
+roslaunch workspace_experiments demo.launch            # normal speed
+roslaunch workspace_experiments demo.launch speed:=0.6 # slower, nicer for recording
+```
+
+The node `scripts/demo_motion.py` publishes `/joint_states` and moves smoothly between keyframes (cosine easing). Add or change poses in its `KEYFRAMES` list.
+
 ## Record and replay a motion
 
 ```bash
